@@ -2,7 +2,12 @@
 	"name": "formatblock",
 	"displayName": "FormatBlock",
 	"description": "This extension will help in adding the new lines among the blocks so that code can look nicely.",
-	"version": "0.0.1",
+	"version": "1.0.0",
+	"publisher": "nimish-gupta",
+	"repository": {
+		"type": "public",
+		"url": "https://github.com/nimish-gupta/vscode-format-block"
+	},
 	"engines": {
 		"vscode": "^1.36.0"
 	},
