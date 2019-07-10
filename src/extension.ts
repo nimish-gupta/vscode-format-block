@@ -1,26 +1,50 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import formatBlock from './formatBlock';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+const supportedLanguages = [
+	'typescript',
+	'javascript',
+	'typescriptreact',
+	'javascriptreact',
+	'rust',
+];
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "formatBlock" is now active!');
+const getSelectors = (): vscode.DocumentSelector =>
+	supportedLanguages.reduce<vscode.DocumentFilter[]>(
+		(acc, language) => [
+			...acc,
+			{ language, scheme: 'file' },
+			{ language, scheme: 'untitled' },
+		],
+		[]
+	);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('extension.formatBlock', () => {
-		// The code you place here will be executed every time your command is executed
+export async function activate(context: vscode.ExtensionContext) {
+	let disposable = vscode.commands.registerCommand(
+		'extension.formatBlock',
+		() => {
+			const { activeTextEditor } = vscode.window;
+			if (
+				activeTextEditor &&
+				supportedLanguages.indexOf(activeTextEditor.document.languageId) !== -1
+			) {
+				const { document } = activeTextEditor;
+				const edit = new vscode.WorkspaceEdit();
+				const formattedBlocks = formatBlock(document);
+				formattedBlocks.forEach((block) => edit.insert(document.uri, ...block));
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Format block extension is active!');
-	});
+				return vscode.workspace.applyEdit(edit);
+			}
+		}
+	);
 
 	context.subscriptions.push(disposable);
+	// vscode.languages.registerDocumentFormattingEditProvider(getSelectors(), {
+	// 	provideDocumentFormattingEdits(document) {
+	// 		const formattedBlocks = formatBlock(document);
+	// 		return formattedBlocks.map((block) => vscode.TextEdit.insert(...block));
+	// 	},
+	// });
 }
 
 // this method is called when your extension is deactivated
