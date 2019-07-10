@@ -1,11 +1,16 @@
 import * as vscode from 'vscode';
 type TInterfaceBlock = [vscode.Position, string];
 
-interface IPosition {
-	[key: number]: { start: number; end?: number };
+interface IPos {
+	start: number;
+	end?: number;
 }
 
-const formatBlock = (document: vscode.TextDocument): TInterfaceBlock[] => {
+interface IPosition {
+	[key: number]: IPos;
+}
+
+const getPosition = (document: vscode.TextDocument): [IPos[], IPos[]] => {
 	const positions: IPosition = {};
 	const stack = [];
 	const totalLines = document.lineCount;
@@ -31,8 +36,67 @@ const formatBlock = (document: vscode.TextDocument): TInterfaceBlock[] => {
 		}
 	}
 
-	const firstLine = document.lineAt(0);
-	return [[firstLine.range.start, '42\n']];
+	const array = Object.keys(positions)
+		.map((pos) => positions[parseInt(pos, 10)])
+		.filter((pos) => pos.end !== undefined);
+
+	return [
+		array
+			.map((pos) => Object.assign({}, pos))
+			.sort((a, b) => (a.start <= b.start ? -1 : 1)),
+		array
+			.map((pos) => Object.assign({}, pos))
+			.sort((a, b) => (a.end! <= b.end! ? -1 : 1)),
+	];
+};
+
+const formatBlock = (document: vscode.TextDocument): TInterfaceBlock[] => {
+	const [startSortPositions, endSortPositions] = getPosition(document);
+
+	const startInsertions = startSortPositions.reduce<TInterfaceBlock[]>(
+		(acc, pos, index) => {
+			const data: TInterfaceBlock[] = [];
+			const prevPosition = startSortPositions[index - 1];
+			const prevOpenBrace =
+				pos.start === 0 ||
+				(prevPosition !== undefined && pos.start - prevPosition.start < 2);
+
+			if (!prevOpenBrace) {
+				const line = document.lineAt(pos.start - 1);
+
+				if (line.text !== '') {
+					data.push([line.range.end, '\n']);
+				}
+			}
+
+			return acc.concat(data);
+		},
+		[]
+	);
+
+	const endInsertions = endSortPositions.reduce<TInterfaceBlock[]>(
+		(acc, pos, index) => {
+			const data: TInterfaceBlock[] = [];
+			const nextPosition = endSortPositions[index + 1];
+
+			const nextCloseBrace =
+				pos.end === document.lineCount - 1 ||
+				(nextPosition !== undefined && nextPosition.end! - pos.end! < 2);
+
+			if (!nextCloseBrace) {
+				const line = document.lineAt(pos.end! + 1);
+
+				if (line.text !== '') {
+					data.push([line.range.start, '\n']);
+				}
+			}
+
+			return acc.concat(data);
+		},
+		[]
+	);
+
+	return [...startInsertions, ...endInsertions];
 };
 
 export default formatBlock;
